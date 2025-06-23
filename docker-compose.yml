@@ -1,0 +1,116 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - hospital-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - hospital-network
+
+  postgresDB:
+    image: postgres:13
+    container_name: postgresDB
+    environment:
+      POSTGRES_USER: admin 
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: hospital_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - hospital-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@hospital.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgresDB
+    networks:
+      - hospital-network
+
+  producer:
+    build:
+      context: .
+      dockerfile: producer/Dockerfile
+    container_name: producer
+    volumes:
+      - ./shared_data:/app/shared_data
+      - ./configs:/app/configs
+    depends_on:
+      - kafka
+    networks:
+      - hospital-network
+
+  stream_processor:
+    build:
+      context: .
+      dockerfile: stream_processor/Dockerfile
+    container_name: stream_processor
+    depends_on:
+      - kafka
+    volumes:
+      - ./shared_data:/app/shared_data
+      - ./configs:/app/configs
+    networks:
+      - hospital-network
+
+  batch_ingestor:
+    build:
+      context: .
+      dockerfile: batch_ingestor/Dockerfile
+    container_name: batch_ingestor
+    depends_on:
+      - postgresDB
+    volumes:
+      - ./shared_data:/app/shared_data
+      - ./configs:/app/configs
+    networks:
+      - hospital-network
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: scheduler/Dockerfile
+    container_name: scheduler
+    depends_on:
+      - producer
+      - batch_ingestor
+    volumes:
+      - ./scripts:/app/scripts
+      - ./shared_data:/app/shared_data
+      - ./configs:/app/configs
+    networks:
+      - hospital-network
+
+volumes:
+  pgdata:
+  
+networks:
+  hospital-network:
+    driver: bridge

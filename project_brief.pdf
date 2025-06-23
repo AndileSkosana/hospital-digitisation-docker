@@ -1,0 +1,37 @@
+% Project Brief: Hospital Digitisation Project (Phase 1)
+
+## Overview
+The Hospital Digitisation Project aims to transform and modernize the record-keeping processes of a major public hospital in Johannesburg. This project focuses on the digitization and consolidation of hospital records, ensuring efficient data management and accessibility.
+
+## Objectives
+- To generate synthetic datasets representing patients and hospital staff.
+- To implement streaming and batch data ingestion processes for medical records.
+- To update and maintain a modern data warehouse using PostgreSQL.
+
+## Project Tasks
+### Task 1: Patient & Staff Generator
+- **Generate Core Dataset**: Create synthetic datasets for patients and hospital staff using provided scripts.
+- **Data Integrity**: Ensure the generated data adheres to the South African ID number format and includes age-based logic for staff assignments and retirement.
+
+### Task 2: Streaming & Batch Processing
+- **Simulate Data Ingestion**: Implement streaming ingestion every 3 minutes and batch ingestion every 15 minutes.
+- **Database Updates**: Process new medical records and maintain a 9-day ingestion window, ensuring a total processed data size of approximately 5GB.
+
+## Deliverables
+- Generated CSV files:
+  - `people.csv`: Contains 5 million synthetic people.
+  - `doctors.csv`: Contains assigned doctors with specialties and shifts.
+  - `hospital_patients.csv`: Contains generated hospital patient records.
+  - `staff_assignments.csv`: Contains staff assignments and roles.
+- Docker configuration files for all services.
+- A comprehensive README.md file detailing setup and usage.
+- A project brief summarizing objectives and tasks.
+
+## Technical Stack
+- **Programming Language**: Python
+- **Database**: PostgreSQL
+- **Containerization**: Docker
+- **Data Processing**: Batch and streaming ingestion patterns
+
+## Conclusion
+This project represents a significant step towards modernizing hospital record management. By leveraging synthetic data generation and efficient data processing techniques, we aim to enhance the operational capabilities of the hospital and improve patient care through better data accessibility.

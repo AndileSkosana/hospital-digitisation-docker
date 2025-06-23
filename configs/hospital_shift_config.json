@@ -1,0 +1,141 @@
+{
+  "departments": [
+    "Emergency",
+    "Surgery",
+    "Medicine",
+    "Pediatrics",
+    "ICU",
+    "Maternity",
+    "Oncology",
+    "Cardiology",
+    "Neurology",
+    "Psychiatry",
+    "High Care",
+    "Palliative"
+  ],
+  "rules": {
+    "minimum_senior_per_shift": 1,
+    "max_shifts_per_week": 5
+  },
+  "shift_definitions": {
+    "DAY_12HR": {
+      "start_time": "07:00",
+      "duration_hours": 12,
+      "description": "Standard 12-hour day shift."
+    },
+    "NIGHT_12HR": {
+      "start_time": "19:00",
+      "duration_hours": 12,
+      "description": "Standard 12-hour night shift."
+    },
+    "FULL_24HR": {
+      "start_time": "07:00",
+      "duration_hours": 24,
+      "description": "Full 24-hour on-call shift."
+    },
+    "MORNING_8HR_RESERVE": {
+      "start_time": "06:00",
+      "duration_hours": 8,
+      "reserve_hours": 4,
+      "description": "Morning shift with reserve hours."
+    },
+    "AFTERNOON_8HR_RESERVE": {
+      "start_time": "14:00",
+      "duration_hours": 8,
+      "reserve_hours": 4,
+      "description": "Afternoon shift with reserve hours."
+    },
+    "NIGHT_8HR_RESERVE": {
+      "start_time": "22:00",
+      "duration_hours": 8,
+      "reserve_hours": 4,
+      "description": "Night shift with reserve hours."
+    }
+  },
+  "medical_shift_daily_cycle": [
+    {
+      "shift_type": "FULL_24HR",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "BREAK_24HR",
+      "is_work_day": false
+    },
+    {
+      "shift_type": "FULL_24HR",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "BREAK_24HR",
+      "is_work_day": false
+    },
+    {
+      "shift_type": "FULL_24HR",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "BREAK_48HR",
+      "is_work_day": false
+    },
+    {
+      "shift_type": "BREAK_48HR",
+      "is_work_day": false
+    },
+    {
+      "shift_type": "DAY_12HR",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "NIGHT_12HR",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "DAY_12HR",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "NIGHT_12HR",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "BREAK_72HR",
+      "is_work_day": false
+    },
+    {
+      "shift_type": "BREAK_72HR",
+      "is_work_day": false
+    },
+    {
+      "shift_type": "BREAK_72HR",
+      "is_work_day": false
+    },
+    {
+      "shift_type": "MORNING_8HR_RESERVE",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "MORNING_8HR_RESERVE",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "AFTERNOON_8HR_RESERVE",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "AFTERNOON_8HR_RESERVE",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "NIGHT_8HR_RESERVE",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "NIGHT_8HR_RESERVE",
+      "is_work_day": true
+    },
+    {
+      "shift_type": "BREAK_24HR",
+      "is_work_day": false
+    }
+  ]
+}

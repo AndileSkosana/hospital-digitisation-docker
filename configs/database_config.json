@@ -1,0 +1,13 @@
+{
+  "host": "postgres",
+  "port": 5432,
+  "user": "hospital",
+  "password": "hospital_pass",
+  "database": "hospital_db",
+  "schemas": {
+    "admissions": "hospital_admissions",
+    "transport": "emergency_transport",
+    "transfers": "patient_transfers",
+    "summary": "daily_summary"
+  }
+}

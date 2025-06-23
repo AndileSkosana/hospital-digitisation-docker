@@ -1,0 +1,10 @@
+{
+  "bootstrap_servers": ["kafka:9092"],
+  "topics": {
+    "transport": "hospital.transport",
+    "transfers": "hospital.transfers",
+    "admissions": "hospital.admissions",
+    "summary": "hospital.daily_summary"
+  },
+  "client_id": "hospital_sim_producer"
+}
