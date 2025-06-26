@@ -5,40 +5,36 @@ import json
 import os
 import signal
 import shutil
-import threading
 import sys
 from datetime import datetime, timedelta
 
-# Import all necessary constants, including the daily flag templates
+# Import all necessary constants from the centralized config
 from simulation_config import (
     SIM_START_DATE, SIM_END_DATE, BATCH_INTERVAL_SECONDS,
     SETUP_FLAG_PATH, PEOPLE_GENERATED_FLAG, ILLNESSES_ASSIGNED_FLAG,
-    STAFF_GENERATED_FLAG, WORKFORCE_SIMULATED_FLAG, SCHEDULES_GENERATED_FLAG,
-    DAILY_FLAG_PATH, DAILY_VISITORS_FLAG_TPL, DAILY_ADMISSIONS_FLAG_TPL
+    STAFF_GENERATED_FLAG, WORKFORCE_SIMULATED_FLAG, SCHEDULES_GENERATED_FLAG
 )
 
 # --- Configuration ---
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s - %(message)s')
 STATE_FILE = '/app/shared_data/scheduler_state.json' 
 simulation_running = True
 
-# --- Global State & Threading Lock ---
-state_lock = threading.Lock()
+# --- Global State ---
 current_sim_date = SIM_START_DATE
 
 def save_state():
     """Saves the current state of the simulation."""
-    with state_lock:
-        state = {'current_sim_date': current_sim_date.strftime('%Y-%m-%d')}
-        if os.path.exists(STATE_FILE):
-            backup_path = f'{STATE_FILE}.bak.{datetime.now().strftime("%Y%m%dT%H%M%S")}'
-            try:
-                shutil.copy(STATE_FILE, backup_path)
-            except Exception as e:
-                logging.warning(f"Could not create state backup: {e}")
-        with open(STATE_FILE, 'w') as f:
-            json.dump(state, f, indent=2)
-        logging.info(f"State saved for date: {current_sim_date.strftime('%Y-%m-%d')}")
+    state = {'current_sim_date': current_sim_date.strftime('%Y-%m-%d')}
+    if os.path.exists(STATE_FILE):
+        backup_path = f'{STATE_FILE}.bak.{datetime.now().strftime("%Y%m%dT%H%M%S")}'
+        try:
+            shutil.copy(STATE_FILE, backup_path)
+        except Exception as e:
+            logging.warning(f"Could not create state backup: {e}")
+    with open(STATE_FILE, 'w') as f:
+        json.dump(state, f, indent=2)
+    logging.info(f"State saved for date: {current_sim_date.strftime('%Y-%m-%d')}")
 
 def load_state():
     """Loads the simulation state from a file."""
@@ -47,8 +43,7 @@ def load_state():
         try:
             with open(STATE_FILE, 'r') as f:
                 state = json.load(f)
-            with state_lock:
-                current_sim_date = datetime.strptime(state['current_sim_date'], '%Y-%m-%d')
+            current_sim_date = datetime.strptime(state['current_sim_date'], '%Y-%m-%d')
             logging.info(f"Resumed simulation from date: {current_sim_date.strftime('%Y-%m-%d')}")
         except Exception as e:
             logging.warning(f"State file error: {e}. Starting fresh.")
@@ -82,68 +77,39 @@ def run_script(script_name, *args):
 
 def daily_simulation_cycle():
     """
-    Runs the full sequence of data generation for a single simulated day,
-    using daily flags to ensure each step completes successfully.
+    Runs the full sequence of data generation for a single simulated day.
     """
     global current_sim_date
-    with state_lock:
-        if current_sim_date > SIM_END_DATE: return
-        sim_date_str = current_sim_date.strftime('%Y-%m-%d')
     
+    if current_sim_date > SIM_END_DATE:
+        global simulation_running
+        simulation_running = False
+        return
+
+    sim_date_str = current_sim_date.strftime('%Y-%m-%d')
     logging.info(f"--- Processing Simulated Day: {sim_date_str} ---")
 
-    # Define daily flags using the templates from the config
-    visitors_flag = DAILY_VISITORS_FLAG_TPL.format(date=sim_date_str)
-    admissions_flag = DAILY_ADMISSIONS_FLAG_TPL.format(date=sim_date_str)
+    # Step 1: Generate the list of daily visitors
+    if not run_script('generate_patients.py', sim_date_str):
+        logging.error(f"Could not generate daily visitors for {sim_date_str}. Skipping day.")
+        current_sim_date += timedelta(days=1)
+        return
 
-    # Step 1: Generate the list of daily visitors if not already done
-    if not os.path.exists(visitors_flag):
-        if run_script('generate_patients.py', sim_date_str):
-            with open(visitors_flag, 'w') as f: f.write(datetime.now().isoformat())
-            logging.info(f"Visitor generation complete for {sim_date_str}")
-        else:
-            logging.error(f"Could not generate daily visitors for {sim_date_str}. Skipping day.")
-            return # Skip the rest of the day's processing
-
-    # Step 2: Stream emergency transport and transfers
-    # These are quick tasks and don't need their own flags for this design
+    # Step 2: Generate stream data (transport and transfers)
     run_script('generate_emergency_transport.py', sim_date_str)
     previous_day_str = (current_sim_date - timedelta(days=1)).strftime('%Y-%m-%d')
     run_script('generate_patient_transfers.py', previous_day_str)
 
-    # Step 3: Run the admissions process if not already done
-    if not os.path.exists(admissions_flag):
-        if run_script('generate_patient_admissions.py', sim_date_str):
-            with open(admissions_flag, 'w') as f: f.write(datetime.now().isoformat())
-            logging.info(f"Admissions processing complete for {sim_date_str}")
-        else:
-            logging.error(f"Could not process admissions for {sim_date_str}. Skipping day.")
-            return
+    # Step 3: Generate the final admissions batch file and summary
+    run_script('generate_patient_admissions.py', sim_date_str)
 
-    # Advance to the next day only if all steps for the current day are complete
-    with state_lock:
-        current_sim_date += timedelta(days=1)
+    # Advance to the next day
+    current_sim_date += timedelta(days=1)
     save_state()
 
-def scheduler_loop():
-    """Main scheduler loop that runs the daily simulation cycle."""
-    while simulation_running and current_sim_date <= SIM_END_DATE:
-        daily_simulation_cycle()
-        logging.info(f"--- Day complete. Waiting for {BATCH_INTERVAL_SECONDS} seconds... ---")
-        time.sleep(BATCH_INTERVAL_SECONDS)
-    logging.info("--- Simulation Period Finished ---")
-
-
-if __name__ == "__main__":
-    signal.signal(signal.SIGINT, handle_shutdown)
-    signal.signal(signal.SIGTERM, handle_shutdown)
-
-    logging.info("--- Hospital Data Warehouse Simulation Starting ---")
-    
+def run_initial_setup():
+    """Runs the entire one-time data generation sequence."""
     os.makedirs(SETUP_FLAG_PATH, exist_ok=True)
-    os.makedirs(DAILY_FLAG_PATH, exist_ok=True)
-    
-    # --- Initial Setup with Granular Flags ---
     initial_setup_steps = [
         ('generate_people.py', PEOPLE_GENERATED_FLAG, 'base population'),
         ('assign_illnesses.py', ILLNESSES_ASSIGNED_FLAG, 'illnesses'),
@@ -163,12 +129,28 @@ if __name__ == "__main__":
                 logging.fatal(f"Fatal Error: Could not generate {description}. Halting.")
                 sys.exit(1)
         else:
-            logging.info(f"--- Step {step_num}/{len(initial_setup_steps)}: {description.capitalize()} already exist. Skipping. ---")
+            logging.info(f"--- Step {step_num}/{len(initial_setup_steps)}: {description.capitalize()} already exists. Skipping. ---")
 
     logging.info("--- All initial data generation steps complete. ---")
+
+
+if __name__ == "__main__":
+    signal.signal(signal.SIGINT, handle_shutdown)
+    signal.signal(signal.SIGTERM, handle_shutdown)
+
+    logging.info("--- Hospital Data Warehouse Simulation Starting ---")
+    
+    run_initial_setup()
     
     load_state()
-    scheduler_loop()
+
+    # --- Main Simulation Loop ---
+    while simulation_running:
+        daily_simulation_cycle()
+        if not simulation_running:
+             break
+        logging.info(f"--- Day complete. Waiting for {BATCH_INTERVAL_SECONDS} seconds... ---")
+        time.sleep(BATCH_INTERVAL_SECONDS)
 
     logging.info("Scheduler loop has exited. Application will now shut down.")
     sys.exit(0)
