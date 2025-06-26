@@ -83,7 +83,7 @@ services:
   batch_ingestor:
     build:
       context: .
-      dockerfile: batch_ingestor/Dockerfile
+      dockerfile: batch_ingestor/Dockerfile 
     container_name: batch_ingestor
     depends_on:
       - postgresDB

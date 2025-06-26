@@ -1,15 +1,12 @@
-# Use a more modern and stable Python runtime as a parent image
+# Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements file first to leverage Docker's layer caching.
-# The dependency installation layer will only be rebuilt if requirements.txt changes.
+# Copy requirements from the service's directory, relative to the build context
 COPY producer/requirements.txt .
-
-# Install the Python dependencies from the requirements file
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the producer script into the container
+# Copy the application script from the service's directory, relative to the build context
 COPY producer/producer.py .

@@ -1,81 +1,63 @@
-# Hospital Digitisation Project
+# 🏥 Hospital Data Warehouse & Simulation Project
 
-## Overview
-This project aims to digitise and consolidate hospital records for a major public hospital in Johannesburg. As a data engineering initiative, it involves the streaming and batch ingestion of hospital records and the updating of a modern data warehouse.
+## 📘 Project Overview
 
-## Project Structure
-The project is organized into several directories and files, each serving a specific purpose:
+This project simulates a digital hospital environment and generates a rich, time-series dataset representing the inner workings of a healthcare system. The pipeline is fully containerized and supports:
 
-```
-hospital-data-project
-├── docker-compose.yml          # Defines services, networks, and volumes for Docker containers
-├── .env                        # Environment variables for configuration
-├── shared_data                 # Contains generated data files
-│   ├── people.csv              # Synthetic population data
-│   ├── doctors.csv             # Data for doctors, including specialties
-│   ├── hospital_patients.csv    # Data for hospital patients and medical records
-│   ├── staff_assignments.csv    # Assignments of hospital staff
-├── producer                     # Contains files for the data producer service
-│   ├── Dockerfile               # Instructions to build the producer Docker image
-│   ├── app.py                  # Main application script for data generation
-│   ├── utils.py                # Utility functions for data generation
-├── batch_ingestor               # Contains files for the batch ingestor service
-│   ├── Dockerfile               # Instructions to build the batch ingestor Docker image
-│   └── batch_ingest.py         # Logic for reading CSVs and updating PostgreSQL
-├── stream_processor             # Contains files for the stream processor service
-│   ├── Dockerfile               # Instructions to build the stream processor Docker image
-│   └── stream_producer.py      # Simulates streaming data ingestion
-├── scheduler                    # Contains files for the scheduler service
-│   ├── Dockerfile               # Instructions to build the scheduler Docker image
-│   └── scheduler.py            # Logic for scheduling batch and stream processing
-├── postgres                     # Contains database initialization scripts
-│   └── init_db.sql             # SQL commands to initialize the database schema
-├── pgadmin                      # Configuration for pgAdmin
-├── README.md                   # Documentation for the project
-└── project_brief.pdf           # Detailed overview of the project
-```
+- **Synthetic population generation** with comprehensive demographic and medical details.
+- **Hospital workforce simulation**, including hiring, retirement, and rotating shift schedules.
+- **Daily modeling of patient visits, admissions, and inter-hospital transfers.**
+- **Real-time event streaming** (e.g., emergency transports, patient transfers) using Apache Kafka.
+- **Batch data ingestion** (e.g., admissions) into a PostgreSQL data warehouse for downstream analysis.
 
-## Getting Started
+All services run within Docker containers managed via Docker Compose.
 
-### Prerequisites
-- Docker
-- Docker Compose
+---
 
-### Setup Instructions
-1. **Clone the Repository**
-   ```
-   git clone <your-repo-url>
-   cd hospital-data-project
-   ```
+## 🏗️ Architecture & Data Flow
 
-2. **Build and Start the System**
-   ```
-   docker-compose up --build
-   ```
-   This command will start the following services:
-   - PostgreSQL + pgAdmin
-   - Producer (CSV generator)
-   - Batch and stream processors
-   - Scheduler
+This system follows a **microservices architecture**, with each container responsible for a specific task. The simulation unfolds in phases:
 
-3. **View Outputs**
-   - All generated CSV files will be located in the `shared_data/` folder.
-   - To view the database contents, navigate to `http://localhost:5050` and log into pgAdmin using the credentials specified in the `.env` or `docker-compose.yml` files.
+### 🔧 Initial Setup (via `scheduler`)
+Executed once at the start of the simulation to create foundational datasets:
 
-### Configuration
-Modify the `.env` file to change the following parameters:
-- `NUM_PEOPLE`: Number of synthetic people to generate (default: 5000000)
-- `START_DATE`: Start date for the data (default: 2020-01-01)
-- `END_DATE`: End date for the data (default: 2025-12-31)
-- `DATA_FOLDER`: Path for storing generated data (default: /app/shared_data)
+- `people_data.csv`: Full synthetic population.
+- `staff_data.csv` & `reserve_pool.csv`: Active workforce and reserve candidates.
+- `population_with_illnesses.csv`: People enriched with illness profiles.
+- Quarterly files (`staff_active_...`) and monthly schedules (`schedules_...`) for the full simulation.
 
-### Troubleshooting
-If you encounter issues with container volumes, try the following commands:
-```
-docker-compose down -v
-docker-compose up --build
-```
-Ensure that the `shared_data/` directory exists before starting the system.
+All outputs are stored in the `shared_data/batch/` directory.
 
-## Conclusion
-This project provides a comprehensive approach to hospital digitisation through data engineering practices, including data ingestion, processing, and storage. For further details, refer to the `project_brief.pdf`.
+---
+
+### 📅 Daily Simulation Loop (Driven by `scheduler`)
+Executed every simulated day:
+
+1. **Generate Patients**
+   - `generate_patients.py` creates daily patient visits (`daily_visitors_...csv`).
+
+2. **Simulate Real-Time Events**
+   - `generate_emergency_transport.py` and `generate_patient_transfers.py` simulate emergency and transfer events.
+
+---
+
+### 🔄 Real-Time Streaming (Producer & Kafka)
+- Streaming scripts send individual event messages to Kafka topics.
+- `stream_processor` consumes these messages and stores them as `.json` files in `shared_data/stream/`.
+
+---
+
+### 📦 Batch Processing (Scheduler & Batch Ingestor)
+- `generate_patient_admissions.py` creates `admissions_...csv`.
+- `batch_ingestor` detects and ingests this file from `shared_data/batch/`.
+
+---
+
+### 🗄️ Data Warehousing (Batch Ingestor → PostgreSQL)
+- Batch files are transformed and loaded into a **normalized relational schema** inside the `postgresDB` database.
+- After ingestion, files are moved to `shared_data/processed/`.
+
+---
+
+## 📂 Project Structure
+

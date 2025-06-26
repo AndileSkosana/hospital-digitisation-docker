@@ -1,131 +1,119 @@
 import pandas as pd
 import random
-import uuid
 import os
 import logging
 from datetime import datetime, timedelta
+import numpy as np
 
-from simulation_config import SIM_START_DATE, SIM_END_DATE, PEOPLE_DATA_FILE, BATCH_DATA_PATH
+# Import shared configuration and utilities
+from simulation_config import (
+    SIM_START_DATE, SIM_END_DATE, STAFF_DATA_FILE, RESERVE_POOL_FILE,
+    RETIREMENT_AGE, WORKFORCE_SIM_INTERVAL, BATCH_DATA_PATH
+)
 from utils import calculate_age, classify_experience
 
-# --- Configuration ---
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 
-RETIREMENT_AGE = 64
-RESERVE_POOL_SIZE = 10000
-QUARTERLY_INTERVAL = timedelta(days=90)
-
-# Define initial staff numbers per category for the simulation start
-# These numbers are based on the vacancy data in the original notebook
-INITIAL_STAFF_NUMBERS = {
-    "Medical": 759,
-    "Allied Health": 352,
-    "Nursing": 2187,
-    "Admin & Support": 1597
-}
-
-def sample_staff(population_df, num_required, min_age=18):
-    """Samples a specified number of staff from the eligible population."""
-    eligible_staff = population_df[population_df['Age'] >= min_age].copy()
+def hire_replacements(retiring_staff_df, reserve_pool_df):
+    """
+    Hires replacements from the reserve pool, trying to match experience level.
+    """
+    new_hires_list = []
     
-    # Ensure we don't try to sample more than available
-    num_to_sample = min(num_required, len(eligible_staff))
-    if num_to_sample == 0:
-        return pd.DataFrame()
+    for _, retiree in retiring_staff_df.iterrows():
+        required_exp_level = retiree['Experience_Level']
+        potential_replacements = reserve_pool_df[reserve_pool_df['Experience_Level'] == required_exp_level]
         
-    return eligible_staff.sample(n=num_to_sample)
-
-def create_initial_workforce(people_df):
-    """Creates the initial active staff and a reserve pool."""
-    logging.info("Creating initial workforce and reserve pool...")
-    
-    # Ensure 'Age' column exists
-    if 'Age' not in people_df.columns:
-        people_df['Age'] = people_df['Birthdate'].apply(calculate_age)
-
-    # Sample staff for each category
-    medical_staff = sample_staff(people_df, INITIAL_STAFF_NUMBERS["Medical"], 27)
-    allied_health = sample_staff(people_df, INITIAL_STAFF_NUMBERS["Allied Health"], 22)
-    nursing = sample_staff(people_df, INITIAL_STAFF_NUMBERS["Nursing"], 21)
-    admin_support = sample_staff(people_df, INITIAL_STAFF_NUMBERS["Admin & Support"], 18)
-    
-    active_staff_df = pd.concat([medical_staff, allied_health, nursing, admin_support], ignore_index=True)
-    
-    # Add initial role-related data
-    active_staff_df['Staff_ID'] = [str(uuid.uuid4()) for _ in range(len(active_staff_df))]
-    active_staff_df['Years_of_Service'] = active_staff_df.apply(
-        lambda row: random.randint(1, max(1, row['Age'] - 20)), axis=1
-    )
-    active_staff_df['Experience_Level'] = active_staff_df['Years_of_Service'].apply(classify_experience)
-
-    # Create a reserve pool from the remaining population
-    remaining_population = people_df.drop(active_staff_df.index)
-    reserve_pool_df = sample_staff(remaining_population, RESERVE_POOL_SIZE)
-
-    logging.info(f"Initial active staff: {len(active_staff_df)}, Reserve pool: {len(reserve_pool_df)}")
-    return active_staff_df, reserve_pool_df
-
-def run_workforce_update(active_staff_df, reserve_pool_df, current_date):
-    """Runs a single quarterly update of the workforce."""
-    logging.info(f"--- Running Workforce Update for {current_date.strftime('%Y-%m-%d')} ---")
-    
-    # Update Age and Years of Service for all staff
-    active_staff_df['Age'] = active_staff_df['Birthdate'].apply(lambda bd: calculate_age(bd, today_str=current_date.strftime('%Y-%m-%d')))
-    active_staff_df['Years_of_Service'] += 0.25 # Add a quarter of a year
-    active_staff_df['Experience_Level'] = active_staff_df['Years_of_Service'].apply(classify_experience)
-
-    # Identify retirements
-    age_retirements = active_staff_df['Age'] >= RETIREMENT_AGE
-    
-    # Probabilistic early retirement
-    early_retirement_chance = 0.01 # 1% chance per quarter
-    early_retirement_mask = (active_staff_df['Years_of_Service'] >= 25) & (pd.Series(np.random.rand(len(active_staff_df))) < early_retirement_chance)
-    
-    retired_mask = age_retirements | early_retirement_mask
-    retired_staff_df = active_staff_df[retired_mask]
-    active_staff_df = active_staff_df[~retired_mask] # Keep non-retired staff
-
-    num_retired = len(retired_staff_df)
-    logging.info(f"Total staff retired this quarter: {num_retired}")
-
-    # Replace retired staff from reserve pool
-    if num_retired > 0:
-        num_to_replace = min(num_retired, len(reserve_pool_df))
-        if num_to_replace > 0:
-            replacements = reserve_pool_df.head(num_to_replace)
-            reserve_pool_df = reserve_pool_df.iloc[num_to_replace:]
-            
-            # Initialize new staff members' data
-            replacements['Years_of_Service'] = 0
-            replacements['Experience_Level'] = 'Junior'
-            
-            active_staff_df = pd.concat([active_staff_df, replacements], ignore_index=True)
-            logging.info(f"Hired {num_to_replace} replacements from the reserve pool.")
+        if not potential_replacements.empty:
+            new_hire = potential_replacements.head(1)
+            new_hires_list.append(new_hire)
+            reserve_pool_df.drop(new_hire.index, inplace=True)
         else:
-            logging.warning("Reserve pool is empty. Cannot hire replacements.")
+            if not reserve_pool_df.empty:
+                new_hire = reserve_pool_df.head(1)
+                new_hires_list.append(new_hire)
+                reserve_pool_df.drop(new_hire.index, inplace=True)
+                logging.warning(f"Could not find a '{required_exp_level}' replacement. Hired a '{new_hire.iloc[0]['Experience_Level']}' instead.")
+    
+    if not new_hires_list:
+        return pd.DataFrame(), reserve_pool_df
 
-    return active_staff_df, reserve_pool_df
+    return pd.concat(new_hires_list, ignore_index=True), reserve_pool_df
+
+
+def simulate_workforce_evolution(active_staff_df, reserve_pool_df):
+    """
+    Simulates retirements and hiring over the entire simulation period,
+    saving a snapshot of the active staff and a summary text file for each quarter.
+    """
+    logging.info("Starting workforce evolution simulation...")
+    
+    # --- Use more memory-efficient data types ---
+    for col in ['Role', 'Department', 'Experience_Level', 'Gender', 'Race']:
+        if col in active_staff_df.columns:
+            active_staff_df[col] = active_staff_df[col].astype('category')
+        if col in reserve_pool_df.columns:
+            reserve_pool_df[col] = reserve_pool_df[col].astype('category')
+    
+    current_date = SIM_START_DATE
+    while current_date <= SIM_END_DATE:
+        # Update Staff Ages and Experience
+        active_staff_df['Age'] = active_staff_df['Birthdate'].apply(lambda bd: calculate_age(bd, today_str=current_date.strftime('%Y-%m-%d')))
+        active_staff_df['Years_of_Service'] += 0.25
+        active_staff_df['Experience_Level'] = active_staff_df['Years_of_Service'].apply(classify_experience).astype('category')
+
+        # Identify Retirements
+        retire_mask = (active_staff_df['Age'] >= RETIREMENT_AGE) | \
+                      ((active_staff_df['Years_of_Service'] >= 25) & (np.random.rand(len(active_staff_df)) < 0.01))
+        
+        retiring_staff = active_staff_df[retire_mask]
+        num_retired = len(retiring_staff)
+        
+        num_hired = 0
+        if num_retired > 0:
+            active_staff_df = active_staff_df[~retire_mask]
+            new_hires_df, reserve_pool_df = hire_replacements(retiring_staff, reserve_pool_df)
+            num_hired = len(new_hires_df)
+            if num_hired > 0:
+                active_staff_df = pd.concat([active_staff_df, new_hires_df], ignore_index=True)
+
+        # Generate Summary and Save Snapshots
+        nearing_retirement_df = active_staff_df[active_staff_df['Age'].between(RETIREMENT_AGE - 3, RETIREMENT_AGE - 1)]
+        upcoming_retirements_count = len(nearing_retirement_df)
+        next_retiree_info = "None"
+        if not nearing_retirement_df.empty:
+            next_retiree = nearing_retirement_df.sort_values(by='Age', ascending=False).iloc[0]
+            next_retiree_info = f"{next_retiree['First_Name']} {next_retiree['Surname']} (Age: {int(next_retiree['Age'])})"
+
+        summary_text = f"""
+Workforce Summary for Quarter Ending: {current_date.strftime('%Y-%m-%d')}
+=========================================================
+- Staff Retired This Quarter: {num_retired}
+- New Replacements Hired: {num_hired}
+- Current Reserve Pool Size: {len(reserve_pool_df)}
+--- Retirement Outlook ---
+- Staff Nearing Retirement (Next 3 Years): {upcoming_retirements_count}
+- Next Likely Retiree (by age): {next_retiree_info}
+"""
+        with open(f"{BATCH_DATA_PATH}/workforce_summary_{current_date.strftime('%Y-%m-%d')}.txt", 'w') as f:
+            f.write(summary_text)
+
+        active_staff_df.to_csv(f"{BATCH_DATA_PATH}/staff_active_{current_date.strftime('%Y-%m-%d')}.csv", index=False)
+        logging.info(f"On {current_date.date()}: Retired {num_retired}, Hired {num_hired}. Snapshot and summary saved.")
+        
+        current_date += WORKFORCE_SIM_INTERVAL
+        
+    logging.info("Workforce evolution simulation complete.")
 
 if __name__ == "__main__":
-    logging.info("Starting workforce simulation...")
     try:
-        people_df = pd.read_csv(PEOPLE_DATA_FILE)
-        active_staff, reserve_pool = create_initial_workforce(people_df)
-
-        current_date = SIM_START_DATE
-        while current_date <= SIM_END_DATE:
-            active_staff, reserve_pool = run_workforce_update(active_staff, reserve_pool, current_date)
-            
-            # Save a snapshot of the active staff for this quarter
-            output_path = f"{BATCH_DATA_PATH}/staff_active_{current_date.strftime('%Y-%m-%d')}.csv"
-            active_staff.to_csv(output_path, index=False)
-            logging.info(f"Saved active staff snapshot to {output_path}")
-            
-            current_date += QUARTERLY_INTERVAL
-
-        logging.info("Workforce simulation complete.")
-
-    except FileNotFoundError:
-        logging.error(f"{PEOPLE_DATA_FILE} not found. Please run generate_people_csv.py first.")
+        # --- Specify memory-efficient dtypes on load ---
+        dtype_spec = {'Role': 'category', 'Department': 'category', 'Experience_Level': 'category', 'Gender': 'category', 'Race': 'category'}
+        initial_staff_df = pd.read_csv(STAFF_DATA_FILE, dtype=dtype_spec)
+        initial_reserve_df = pd.read_csv(RESERVE_POOL_FILE, dtype=dtype_spec)
+        
+        simulate_workforce_evolution(initial_staff_df, initial_reserve_df)
+    except FileNotFoundError as e:
+        logging.error(f"Required data file not found: {e}. Please ensure generate_staff.py has been run successfully.")
     except Exception as e:
-        logging.error(f"An unexpected error occurred during workforce simulation: {e}")
+        logging.error(f"An error occurred in simulate_workforce.py: {e}", exc_info=True)

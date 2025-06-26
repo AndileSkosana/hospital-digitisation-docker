@@ -14,7 +14,7 @@ def generate_people(num_records):
     """Generates a DataFrame of synthetic people using detailed demographic data."""
     data = []
     races = list(SA_NAMES.keys())
-    fake = Faker('en_ZA')
+    fake = Faker('zu_ZA')
 
     for _ in range(num_records):
         race = random.choice(races)
