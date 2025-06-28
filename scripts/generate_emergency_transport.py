@@ -8,7 +8,7 @@ import sys
 import ast
 from kafka import KafkaProducer, errors
 
-from simulation_config import BATCH_DATA_PATH, STREAM_DATA_PATH
+from simulation_config import PROCESSED_DATA_PATH, STREAM_DATA_PATH, BATCH_DATA_PATH
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 
@@ -38,10 +38,10 @@ def generate_emergency_transport(sim_date_str):
     """
     visitors_file = f"{BATCH_DATA_PATH}/daily_visitors_{sim_date_str}.csv"
     
-    # --- FIX: Dynamically construct the monthly schedule filename ---
+    # --- Dynamically construct the monthly schedule filename ---
     sim_date = datetime.strptime(sim_date_str, "%Y-%m-%d")
     schedule_month_str = sim_date.strftime("%Y-%m")
-    schedule_file = f"{BATCH_DATA_PATH}/schedules_{schedule_month_str}.csv"
+    schedule_file = f"{PROCESSED_DATA_PATH}/schedules_{schedule_month_str}.csv"
 
     try:
         visitors_df = pd.read_csv(visitors_file)

@@ -6,18 +6,18 @@ from datetime import datetime, timedelta
 import json
 import sys
 
-from simulation_config import BATCH_DATA_PATH, STREAM_DATA_PATH
+from simulation_config import PROCESSED_DATA_PATH, BATCH_DATA_PATH, STREAM_DATA_PATH
 from kafka import KafkaProducer, errors
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 
-# --- Data & Logic from Notebook (Restored) ---
+# --- Medical Reason Data---
 REASONS = [
     "Emergency Transfer", "ICU Admission", "Specialist Consultation", "Step-down Facility",
     "Mental Health Evaluation", "Pediatric Transfer", "Maternal Complications", "Dialysis Requirement",
     "Rehabilitation Services", "Diagnostic Imaging", "Transfer for Surgery"
 ]
-# --- FIX: Re-added Transport_Modes ---
+# --- Transport_Modes ---
 TRANSPORT_MODES = ["Ambulance", "Private Vehicle", "Medical Taxi", "Hospital Shuttle"]
 
 CLINICS_DATA = {
@@ -61,7 +61,7 @@ def generate_patient_transfers(sim_date_str):
     Generates realistic patient transfer events based on the previous day's admissions,
     then sends them to Kafka.
     """
-    admissions_file = f"{BATCH_DATA_PATH}/admissions_{sim_date_str}.csv"
+    admissions_file = f"{PROCESSED_DATA_PATH}/admissions_{sim_date_str}.csv"
     
     try:
         admissions_df = pd.read_csv(admissions_file)

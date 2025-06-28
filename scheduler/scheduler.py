@@ -16,7 +16,7 @@ from simulation_config import (
 )
 
 # --- Configuration ---
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 STATE_FILE = '/app/shared_data/scheduler_state.json' 
 simulation_running = True
 
@@ -132,7 +132,6 @@ def run_initial_setup():
             logging.info(f"--- Step {step_num}/{len(initial_setup_steps)}: {description.capitalize()} already exists. Skipping. ---")
 
     logging.info("--- All initial data generation steps complete. ---")
-
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, handle_shutdown)

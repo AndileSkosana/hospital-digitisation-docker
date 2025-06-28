@@ -3,13 +3,25 @@ CREATE SCHEMA IF NOT EXISTS hospital_operations;
 CREATE SCHEMA IF NOT EXISTS hospital_admissions;
 CREATE SCHEMA IF NOT EXISTS hospital_streams;
 
+-- Drop tables in reverse order of dependency to avoid foreign key issues
+DROP TABLE IF EXISTS hospital_admissions.Admissions CASCADE;
+DROP TABLE IF EXISTS hospital_operations.Schedules CASCADE;
+DROP TABLE IF EXISTS hospital_operations.Staff CASCADE;
+DROP TABLE IF EXISTS hospital_admissions.Patients CASCADE;
+DROP TABLE IF EXISTS hospital_admissions.MedicalConditions CASCADE;
+DROP TABLE IF EXISTS hospital_operations.Departments CASCADE;
+DROP TABLE IF EXISTS hospital_streams.Transports CASCADE;
+DROP TABLE IF EXISTS hospital_streams.Transfers CASCADE;
+
+
+-- Recreate tables with a clean slate
+
 -- Dimension Tables
 CREATE TABLE IF NOT EXISTS hospital_operations.Departments (
     department_id SERIAL PRIMARY KEY,
     department_name VARCHAR(255) UNIQUE NOT NULL
 );
 
--- --- FIX: New table for the staff master list ---
 CREATE TABLE IF NOT EXISTS hospital_operations.Staff (
     staff_id VARCHAR(36) PRIMARY KEY,
     person_id VARCHAR(36) UNIQUE NOT NULL,
@@ -21,10 +33,9 @@ CREATE TABLE IF NOT EXISTS hospital_operations.Staff (
     years_of_service INT
 );
 
--- --- FIX: New table for the daily staff schedules ---
 CREATE TABLE IF NOT EXISTS hospital_operations.Schedules (
     schedule_id SERIAL PRIMARY KEY,
-    staff_id VARCHAR(36) REFERENCES hospital_operations.Staff(staff_id),
+    staff_id VARCHAR(36),
     schedule_date DATE NOT NULL,
     shift_name VARCHAR(100),
     is_work_day BOOLEAN,

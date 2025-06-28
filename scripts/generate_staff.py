@@ -3,12 +3,15 @@ import random
 import os
 import logging
 import math
+import uuid
+
+# Import shared configuration and utilities
 from simulation_config import PEOPLE_DATA_FILE, STAFF_DATA_FILE, RESERVE_POOL_FILE, RESERVE_POOL_SIZE
 from utils import calculate_age, classify_experience
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 
-# --- Configuration Data ---
+# --- Configuration Data (from your provided script) ---
 STAFF_VACANCY_DATA = {
     "Medical": {"Filled": 759},
     "Allied Health": {"Filled": 552},
@@ -21,7 +24,7 @@ ROLE_AGE_LIMITS = {
     "Anesthesiologist": 23, "Radiographer": 21, "Occupational Therapist": 25,
     "Speech Therapist": 25, "EMT": 20, "Respiratory Therapist": 25, "Dietitian": 23,
     "Exercise Physiologist": 22, "Dental Hygienist": 25, "Radiation Therapist": 25,
-    "Laboratory Technician": 25, "Security": 19, "Cleaning": 19, "Porter": 19
+    "Laboratory Technician": 25, "Security": 19, "Cleaning": 19, "Porter": 19, "Surgeon": 28
 }
 
 def sample_staff(df, role, num_to_sample, min_age):
@@ -45,9 +48,7 @@ def generate_staff_and_reserve(people_df, reserve_size):
         roles = {
             "Medical": ["Doctor", "Surgeon"],
             "Nursing": ["Nurse"],
-            "Allied Health": ["Pathologist", "Pharmacist", "Dental Assistant", "Physiotherapist", "Anesthesiologist",
-                            "Radiographer", "Occupational Therapist", "Speech Therapist", "EMT", "Respiratory Therapist",
-                            "Dietitian", "Exercise Physiologist", "Dental Hygienist", "Radiation Therapist", "Laboratory Technician"],
+            "Allied Health": ["Pathologist", "Pharmacist", "Dental Assistant", "Physiotherapist", "Anesthesiologist", "Radiographer", "Occupational Therapist", "Speech Therapist", "EMT", "Respiratory Therapist", "Dietitian", "Exercise Physiologist", "Dental Hygienist", "Radiation Therapist", "Laboratory Technician"],
             "Admin & Support": ["Admin", "Security", "Cleaning", "Porter"]
         }.get(role_group, [])
         
@@ -61,13 +62,14 @@ def generate_staff_and_reserve(people_df, reserve_size):
 
     active_staff_df = pd.concat(active_staff_list, ignore_index=True)
     
-    # --- Sample the reserve pool to respect the configured size ---
+    # Sample the reserve pool to respect the configured size
     eligible_reserve = available_population[available_population['Age'] >= 18]
     num_to_sample_reserve = min(reserve_size, len(eligible_reserve))
     reserve_staff_df = eligible_reserve.sample(n=num_to_sample_reserve).copy()
 
-    # --- Assign Years_of_Service and Experience_Level to both dataframes ---
+    # Assign unique Staff_ID, Years_of_Service, and Experience_Level to both dataframes
     for df in [active_staff_df, reserve_staff_df]:
+        df['Staff_ID'] = [str(uuid.uuid4()) for _ in range(len(df))]
         df['Years_of_Service'] = df.apply(
             lambda row: random.randint(0, max(0, row['Age'] - ROLE_AGE_LIMITS.get(row.get('Role'), 19))),
             axis=1

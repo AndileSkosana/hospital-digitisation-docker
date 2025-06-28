@@ -12,22 +12,12 @@ from utils import classify_experience
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 
 # --- Logic and Data Structures ---
-SPECIALTY_DEPARTMENTS = {
-    "Oncology": {"Senior": "Oncology Only", "Mid-Level": ["Oncology", "ICU"], "Junior": "Flexible"},
-    "Neurology": {"Senior": "Neurology Only", "Mid-Level": ["Neurology", "ICU"], "Junior": "Flexible"},
-    "Cardiology": {"Senior": "Cardiology Only", "Mid-Level": ["Cardiology", "ICU"], "Junior": "Flexible"},
-}
-GENERAL_MEDICINE_DEPARTMENTS = [
-    "Emergency", "ICU", "Orthopedics", "Pediatrics", "Dietetics", "Radiology", "Ophthalmology",
-    "Renal", "Surgical", "Dermatology", "Psychology", "Dentistry", "Optometry",
-    "Gastroenterology", "Frail Care", "Pharmacy", "Psychiatry", "Otorhinolaryngology"
+MEDICAL_ROLES = [
+    "Doctor", "Surgeon", "Nurse", "Pathologist", "Pharmacist", "Dental Assistant", 
+    "Physiotherapist", "Anesthesiologist", "Radiographer", "Occupational Therapist", 
+    "Speech Therapist", "EMT", "Respiratory Therapist", "Dietitian", "Exercise Physiologist", 
+    "Dental Hygienist", "Radiation Therapist", "Laboratory Technician"
 ]
-ALLIED_HEALTH_ROLES = [
-    "Pathologist", "Pharmacist", "Dental Assistant", "Physiotherapist", "Anesthesiologist",
-    "Radiographer", "Occupational Therapist", "Speech Therapist", "EMT", "Respiratory Therapist",
-    "Dietitian", "Exercise Physiologist", "Dental Hygienist", "Radiation Therapist", "Laboratory Technician"
-]
-MEDICAL_ROLES = ["Doctor", "Surgeon", "Nurse"] + ALLIED_HEALTH_ROLES
 
 def generate_all_schedules(staff_df, shift_config):
     """
@@ -43,12 +33,9 @@ def generate_all_schedules(staff_df, shift_config):
 
     cycle_length_days = len(medical_shift_cycle)
     
-    # --- FIX: Use 'shift_type' which is the correct key from the config file ---
-    shift_details_map = {shift['shift_type']: shift for shift in medical_shift_cycle}
-
     # Initialize a persistent rotation state for each medical staff member
     medical_staff_rotation_state = {
-        row['person_id']: random.randint(0, cycle_length_days - 1)
+        row['Staff_ID']: random.randint(0, cycle_length_days - 1)
         for _, row in staff_df[staff_df['Role'].isin(MEDICAL_ROLES)].iterrows()
     }
     
@@ -66,7 +53,7 @@ def generate_all_schedules(staff_df, shift_config):
             daily_staffing_check = {}
 
             for _, person in staff_df.iterrows():
-                staff_id = person["person_id"]
+                staff_id = person["Staff_ID"]
                 role = person["Role"]
                 
                 if role in MEDICAL_ROLES:
@@ -76,11 +63,12 @@ def generate_all_schedules(staff_df, shift_config):
                     assignment = {
                         'staff_id': staff_id,
                         'First_Name': person["First_Name"], 'Surname': person["Surname"],
-                        'Role': role, 'Experience_Level': person['Experience_Level'],
+                        'Role': role, 
+                        'Experience_Level': person['Experience_Level'],
                         'Years_of_Service': person['Years_of_Service'],
                         'date': date_iter.strftime('%Y-%m-%d'),
                         'Department': person['Department'],
-                        'shift_name': shift_info['shift_type'],
+                        'shift_name': shift_info['shift_type'], # Corrected key
                         'is_work_day': shift_info['is_work_day']
                     }
                     daily_assignments.append(assignment)
@@ -93,14 +81,14 @@ def generate_all_schedules(staff_df, shift_config):
 
             # Senior Staff Coverage Logic
             working_staff_ids = {a['staff_id'] for a in daily_assignments if a['is_work_day']}
-            all_seniors_working_today = staff_df[(staff_df['Experience_Level'] == 'Senior') & (staff_df['person_id'].isin(working_staff_ids))]
+            all_seniors_working_today = staff_df[(staff_df['Experience_Level'] == 'Senior') & (staff_df['Staff_ID'].isin(working_staff_ids))]
             
             for dept, assigned_staff_list in daily_staffing_check.items():
                 has_senior = any(staff['Experience_Level'] == "Senior" for staff in assigned_staff_list)
                 if not has_senior and not all_seniors_working_today.empty:
                     senior_to_reassign = all_seniors_working_today.sample(n=1).iloc[0]
                     for assignment in daily_assignments:
-                        if assignment['staff_id'] == senior_to_reassign['person_id']:
+                        if assignment['staff_id'] == senior_to_reassign['Staff_ID']:
                             logging.warning(f"Reassigning Senior {assignment['First_Name']} to cover {dept} on {date_iter.date()}")
                             assignment['Department'] = dept
                             break

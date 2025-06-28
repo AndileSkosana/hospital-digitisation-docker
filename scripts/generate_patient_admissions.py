@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import sys
 
 # Import shared configuration
-from simulation_config import BATCH_DATA_PATH
+from simulation_config import PROCESSED_DATA_PATH, BATCH_DATA_PATH
 from utils import calculate_age
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
@@ -48,7 +48,7 @@ def load_staff_schedule(sim_date):
     """Loads the schedule for the specific month."""
     # --- FIX: Dynamically construct the monthly schedule filename ---
     schedule_month_str = sim_date.strftime("%Y-%m")
-    schedule_file = f"{BATCH_DATA_PATH}/schedules_{schedule_month_str}.csv"
+    schedule_file = f"{PROCESSED_DATA_PATH}/schedules_{schedule_month_str}.csv"
     try:
         df = pd.read_csv(schedule_file)
         # Ensure the date column is in datetime format for proper filtering
