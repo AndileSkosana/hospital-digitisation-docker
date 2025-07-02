@@ -11,7 +11,7 @@ from utils import calculate_age, classify_experience
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 
-# --- Configuration Data (from your provided script) ---
+# --- Configuration Data ---
 STAFF_VACANCY_DATA = {
     "Medical": {"Filled": 759},
     "Allied Health": {"Filled": 552},

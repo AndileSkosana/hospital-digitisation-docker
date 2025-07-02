@@ -46,7 +46,6 @@ INPATIENT_DEPARTMENT_MAP = {
 
 def load_staff_schedule(sim_date):
     """Loads the schedule for the specific month."""
-    # --- FIX: Dynamically construct the monthly schedule filename ---
     schedule_month_str = sim_date.strftime("%Y-%m")
     schedule_file = f"{PROCESSED_DATA_PATH}/schedules_{schedule_month_str}.csv"
     try:
@@ -155,7 +154,7 @@ if __name__ == "__main__":
         
     sim_date_str = sys.argv[1]
     sim_date = datetime.strptime(sim_date_str, "%Y-%m-%d")
-    visitors_file = f"{BATCH_DATA_PATH}/daily_visitors_{sim_date_str}.csv"
+    visitors_file = f"{PROCESSED_DATA_PATH}/daily_visitors_{sim_date_str}.csv"
     
     try:
         daily_visitors_df = pd.read_csv(visitors_file)

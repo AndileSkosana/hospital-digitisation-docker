@@ -200,3 +200,176 @@ def classify_experience(years_of_service):
         return "Mid-Level"
     else:
         return "Senior"
+    
+def get_available_staff(staff_df, role, department=None, experience_level=None):
+    """Helper to get a random available staff member's full name."""
+    role_staff = staff_df[staff_df['Role'] == role]
+    if role_staff.empty: return "No Staff Available"
+    
+    if department:
+        dept_staff = role_staff[role_staff['Department'] == department]
+        if not dept_staff.empty:
+            if experience_level:
+                exp_dept_staff = dept_staff[dept_staff['Experience_Level'] == experience_level]
+                if not exp_dept_staff.empty:
+                    return f"{exp_dept_staff.sample(n=1).iloc[0]['First_Name']} {exp_dept_staff.sample(n=1).iloc[0]['Surname']}"
+            return f"{dept_staff.sample(n=1).iloc[0]['First_Name']} {dept_staff.sample(n=1).iloc[0]['Surname']}"
+            
+    return f"{role_staff.sample(n=1).iloc[0]['First_Name']} {role_staff.sample(n=1).iloc[0]['Surname']}"
+
+def get_department_by_condition_and_severity(condition, severity):
+    """
+    Determines the appropriate department based on condition and severity,
+    using the detailed routing map.
+    """
+    # First, check for a specific override in the severity routing map
+    department = CONDITION_SEVERITY_ROUTING.get((condition, severity))
+    if department:
+        return department
+    
+    # If no specific override, use the general inpatient map
+    return INPATIENT_DEPARTMENT_MAP.get(condition, "General Medicine")
+
+# Patient Volume & Seasonality
+FLU_PEAK_MONTHS = [4, 5, 6, 7, 8]
+ACCIDENT_PEAK_MONTHS = [3, 4, 12]
+BURN_PEAK_MONTHS = [5, 6, 7]
+ASSAULT_PEAK_MONTHS = [12, 1]
+ALCOHOL_PEAK_MONTHS = [9, 10, 11, 12]
+POISONING_PEAK_MONTHS = [12, 1]
+MALNUTRITION_PEAK_MONTHS = [6, 7, 8]
+
+# Condition & Department Mappings
+OUTPATIENT_CONDITIONS = ['Routine Check-up', 'Minor Injury', 'General Consultation', 'Flu Symptoms', "No significant illness reported"]
+INPATIENT_DEPARTMENT_MAP = {
+    "Chronic Condition": "Medicine", "Palliative Care Need": "Palliative",
+    "Transplant Assessment": "Surgery", "Trauma": "Surgery", "Chest pain": "Cardiology",
+    "Severe shortness of breath or difficulty breathing": "Medicine", "Stroke symptoms": "Neurology",
+    "Heavy, uncontrollable bleeding": "Surgery", "Major trauma": "Surgery",
+    "Sudden and severe pain (abdomen, chest, head)": "Medicine", "Seizures": "Neurology",
+    "Loss of consciousness or fainting": "Medicine", "Severe allergic reactions (anaphylaxis)": "Medicine",
+    "High fever": "Medicine", "Sudden confusion or change in mental status": "Neurology",
+    "Severe headaches": "Medicine", "Broken bones or significant joint injuries": "Surgery",
+    "Severe infections": "Medicine", "Burns": "Surgery", "Assault-related injuries": "Emergency Room",
+    "Alcohol-related illness": "Medicine", "Poisoning": "Emergency Room", "Malnutrition": "Medicine",
+}
+
+# Constants for Emergency Conditions
+EMERGENCY_CONDITIONS = [
+    "Trauma", "Chest pain", "Severe shortness of breath or difficulty breathing",
+    "Stroke symptoms", "Heavy, uncontrollable bleeding", "Major trauma", "Burns",
+    "Assault-related injuries", "Poisoning", "Seizures", "Loss of consciousness or fainting",
+    "Severe allergic reactions (anaphylaxis)", "Sudden confusion or change in mental status"
+]
+
+# Constants for Condition Severity 
+CONDITION_SEVERITY = {
+    # 🚨 Emergency & Critical Care
+    "Chest pain": 5,
+    "Stroke symptoms": 5,
+    "Poisoning": 5,
+    "Severe allergic reactions (anaphylaxis)": 5,
+    "Heavy, uncontrollable bleeding": 5,
+    "Major trauma": 5,
+    "Overdose": 5,
+    "Trauma": 5,
+    "Sudden and severe pain (abdomen, chest, head)": 4,
+    "Seizures": 4,
+    "Loss of consciousness or fainting": 4,
+    "Sudden confusion or change in mental status": 4,
+    "Severe shortness of breath or difficulty breathing": 4,
+    # 🧠 Mental Health & Substance Use
+    "Substance abuse": 4,
+    "Substance disorders": 4,
+    "Alcohol-related illness": 3,
+    "Dementia": 3,
+    # 🦴 Musculoskeletal & Injury
+    "Fracture": 3,
+    "Burns": 4,
+    "Assault-related injuries": 4,
+    # 🫁 Respiratory
+    "Shortness of breath": 3,
+    # 🧬 Internal Medicine & Chronic Conditions
+    "Fever": 2,
+    "Abdominal pain": 2,
+    "Chronic Condition": 2,
+    "Malnutrition": 2,
+    "Palliative Care Need": 3,
+    "Transplant Assessment": 4,
+    "HIV/AIDS": 5,
+    # 🤰 Obstetrics & Women's Health
+    "Gestational diabetes": 4,
+    "Pregnancy": 4
+}
+
+# Direct Department-to-Role Mapping
+DEPARTMENT_TO_ROLE_MAP = {
+    "Pharmacy": "Pharmacist",
+    "Physiotherapy": "Physiotherapist",
+    "Dietetics": "Dietitian",
+    "Radiology": "Radiographer",
+    "Occupational Therapy": "Occupational Therapist",
+    "Speech Therapy": "Speech Therapist",
+    "Respiratory Therapy": "Respiratory Therapist",
+    "Nutrition": "Dietitian",
+    "Rehabilitation": "Physiotherapist",
+    "Anesthesiology": "Anesthesiologist",
+    "Pathology": "Pathologist",
+    "Laboratory": "Laboratory Technician",
+    "Radiation Oncology": "Radiation Therapist",
+    "Dental": "Dental Hygienist",
+    "Emergency Room": "EMT"
+}
+
+# Condition + Severity to Department Mapping
+CONDITION_SEVERITY_ROUTING = {
+    # 🦴 Musculoskeletal / Orthopedic
+    ("Fracture", 1): "Physiotherapy",
+    ("Fracture", 2): "Physiotherapy",
+    ("Mobility Issues", 1): "Occupational Therapy",
+    ("Post-stroke recovery", 2): "Rehabilitation",
+    ("Post-surgical recovery", 2): "Rehabilitation",
+    ("Neuromuscular disorder", 3): "Rehabilitation",
+    # 🧠 Mental Health & Neurology
+    ("Mild Depression", 1): "Psychology",
+    ("Anxiety", 1): "Psychology",
+    ("Anxiety disorders", 2): "Psychology",
+    ("Substance disorders", 3): "Psychology",
+    ("Substance abuse", 3): "Psychology",
+    ("Attempted suicide", 3): "Psychiatry",
+    ("Confusion or change in mental status", 3): "Neurology",
+    ("Dementia", 3): "Neurology",
+    # 🫁 Respiratory
+    ("Asthma", 1): "Respiratory Therapy",
+    ("COPD", 2): "Respiratory Therapy",
+    ("Bronchitis", 1): "Respiratory Therapy",
+    ("Sleep apnea", 2): "Respiratory Therapy",
+    # 🗣️ Speech & Language
+    ("Speech Delay", 1): "Speech Therapy",
+    ("Stuttering", 1): "Speech Therapy",
+    ("Aphasia", 2): "Speech Therapy",
+    ("Developmental language disorder", 2): "Speech Therapy",
+    # 🥗 Nutrition & Dietetics
+    ("Malnutrition", 1): "Nutrition",
+    ("Obesity related complications", 2): "Nutrition",
+    ("Obesity", 2): "Nutrition",
+    ("Vitamin deficiency", 1): "Nutrition",
+    ("Eating disorder", 2): "Nutrition",
+    # 🦷 Dental
+    ("Toothache", 1): "Dental",
+    ("Gingivitis", 1): "Dental",
+    ("Dental abscess", 2): "Dental",
+    # 🩻 Radiology
+    ("Suspected fracture", 1): "Radiology",
+    ("Head injury", 2): "Radiology",
+    ("Chest pain", 2): "Radiology",
+    # 🧬 Internal Medicine & Chronic Conditions
+    ("Chronic Condition", 1): "Pharmacy",
+    ("Chronic kidney disease", 3): "Renal Medicine",
+    ("HIV/AIDS", 3): "Infectious Diseases",
+    ("Gestational diabetes", 3): "Endocrinology",
+    # 🤰 Obstetrics & Women's Health
+    ("Pregnancy", 2): "Obstetrics",
+    # 🚨 Emergency & Critical Care
+    ("Overdose", 5): "Emergency Room"
+}

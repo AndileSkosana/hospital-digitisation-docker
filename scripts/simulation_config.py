@@ -7,7 +7,7 @@ NORMAL_PATIENT_PERIOD_RESUME = datetime(2024, 11, 13)
 SIM_END_DATE = datetime(2025, 3, 31)
 
 # Real-world time intervals for jobs in seconds
-BATCH_INTERVAL_SECONDS = 30  # 15 minutes
+BATCH_INTERVAL_SECONDS = 50  # 15 minutes
 STREAM_INTERVAL_SECONDS = 10 # 3 minutes
 
 # --- Data Generation Parameters ---
@@ -38,14 +38,12 @@ STREAM_DATA_PATH = f'{LAKE_PATH}/stream'
 PROCESSED_DATA_PATH = f'{LAKE_PATH}/processed' # Path for files after ingestion
 SETUP_FLAG_PATH = f'{LAKE_PATH}/.setup_flags'
 
-# --- FIX: Update paths to point to the PROCESSED directory for consumed files ---
 # These files are created in /batch but consumed from /processed by daily scripts.
 PEOPLE_DATA_FILE = f'{PROCESSED_DATA_PATH}/people_data.csv'
 STAFF_DATA_FILE = f'{PROCESSED_DATA_PATH}/staff_data.csv'
 RESERVE_POOL_FILE = f'{PROCESSED_DATA_PATH}/reserve_pool.csv'
 ILLNESSES_FILE = f'{PROCESSED_DATA_PATH}/population_with_illnesses.csv'
 # Schedules are monthly, so the daily scripts will need to construct the correct path dynamically
-# We'll provide the base path here.
 SCHEDULES_PATH = PROCESSED_DATA_PATH 
 
 # Granular Flag Files for Initial Setup
@@ -54,8 +52,11 @@ STAFF_GENERATED_FLAG = f'{SETUP_FLAG_PATH}/staff_generated.flag'
 ILLNESSES_ASSIGNED_FLAG = f'{SETUP_FLAG_PATH}/illnesses_assigned.flag'
 WORKFORCE_SIMULATED_FLAG = f'{SETUP_FLAG_PATH}/workforce_simulated.flag'
 SCHEDULES_GENERATED_FLAG = f'{SETUP_FLAG_PATH}/schedules_generated.flag'
+INITIAL_DATA_GENERATED_FLAG = f'{LAKE_PATH}/initial_data_generated.flag'
 
-# Daily Process Flags (Templates)
+# --- Daily Process Flags (Templates) ---
 DAILY_FLAG_PATH = f'{LAKE_PATH}/.daily_flags'
 DAILY_VISITORS_FLAG_TPL = f'{DAILY_FLAG_PATH}/visitors_{{date}}.flag'
 DAILY_ADMISSIONS_FLAG_TPL = f'{DAILY_FLAG_PATH}/admissions_{{date}}.flag'
+DAILY_TRANSPORT_FLAG_TPL = f'{DAILY_FLAG_PATH}/transport_{{date}}_session_{{session}}.flag'
+DAILY_TRANSFERS_FLAG_TPL = f'{DAILY_FLAG_PATH}/transfers_{{date}}_session_{{session}}.flag'
