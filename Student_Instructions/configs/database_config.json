@@ -1,5 +1,5 @@
 {
-  "host": "postgresDB",
+  "host": "localhost",
   "port": 5432,
   "user": "admin",
   "password": "admin",

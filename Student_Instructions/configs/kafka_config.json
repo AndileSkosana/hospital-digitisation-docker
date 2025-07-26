@@ -1,5 +1,5 @@
 {
-  "bootstrap_servers": ["kafka:9092"],
+  "bootstrap_servers": ["localhost:9092"],
   "topics": {
     "transport": "hospital.transport",
     "transfers": "hospital.transfers",
