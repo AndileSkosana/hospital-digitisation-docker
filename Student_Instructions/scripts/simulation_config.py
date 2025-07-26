@@ -8,8 +8,8 @@ NORMAL_PATIENT_PERIOD_RESUME = datetime(2024, 11, 13)
 SIM_END_DATE = datetime(2025, 3, 31)
 
 # --- Timing Control (in seconds) ---
-BATCH_INTERVAL_SECONDS = 50    # 1 simulated day
-STREAM_INTERVAL_SECONDS = 10   # ~8 simulated hours
+BATCH_INTERVAL_SECONDS =     # 1 simulated day
+STREAM_INTERVAL_SECONDS =    # ~8 simulated hours
 
 # --- Population & Workforce Settings ---
 POPULATION_SIZE = 3_000_000
@@ -56,7 +56,7 @@ WORKFORCE_SIMULATED_FLAG = os.path.join(SETUP_FLAG_PATH, "workforce_simulated.fl
 SCHEDULES_GENERATED_FLAG = os.path.join(SETUP_FLAG_PATH, "schedules_generated.flag")
 INITIAL_DATA_GENERATED_FLAG = os.path.join(LAKE_PATH, "initial_data_generated.flag")
 
-# --- Daily Flags (templated) ---
+# --- Daily Flags ---
 DAILY_VISITORS_FLAG_TPL = os.path.join(DAILY_FLAG_PATH, "visitors_{date}.flag")
 DAILY_ADMISSIONS_FLAG_TPL = os.path.join(DAILY_FLAG_PATH, "admissions_{date}.flag")
 DAILY_TRANSPORT_FLAG_TPL = os.path.join(DAILY_FLAG_PATH, "transport_{date}_session_{session}.flag")
